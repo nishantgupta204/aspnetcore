@@ -6,6 +6,7 @@ import { applyCaptureIdToElement } from './ElementReferenceCapture';
 import { EventFieldInfo } from './EventFieldInfo';
 import { dispatchEvent } from './RendererEventDispatcher';
 import { attachToEventDelegator as attachNavigationManagerToEventDelegator } from '../Services/NavigationManager';
+import { profileEnd, profileStart } from '../Platform/Profiling';
 const selectValuePropname = '_blazorSelectValue';
 const sharedTemplateElemForParsing = document.createElement('template');
 const sharedSvgElemForParsing = document.createElementNS('http://www.w3.org/2000/svg', 'g');
@@ -40,6 +41,8 @@ export class BrowserRenderer {
   }
 
   public updateComponent(batch: RenderBatch, componentId: number, edits: ArrayBuilderSegment<RenderTreeEdit>, referenceFrames: ArrayValues<RenderTreeFrame>): void {
+    profileStart('updateComponent');
+
     const element = this.childComponentLocations[componentId];
     if (!element) {
       throw new Error(`No element is currently associated with component ${componentId}`);
@@ -67,6 +70,8 @@ export class BrowserRenderer {
     if ((activeElementBefore instanceof HTMLElement) && ownerDocument && ownerDocument.activeElement !== activeElementBefore) {
       activeElementBefore.focus();
     }
+
+    profileEnd('updateComponent');
   }
 
   public disposeComponent(componentId: number) {
@@ -99,18 +104,23 @@ export class BrowserRenderer {
       const editType = editReader.editType(edit);
       switch (editType) {
         case EditType.prependFrame: {
+          profileStart('prependFrame');
           const frameIndex = editReader.newTreeIndex(edit);
           const frame = batch.referenceFramesEntry(referenceFrames, frameIndex);
           const siblingIndex = editReader.siblingIndex(edit);
           this.insertFrame(batch, componentId, parent, childIndexAtCurrentDepth + siblingIndex, referenceFrames, frame, frameIndex);
+          profileEnd('prependFrame');
           break;
         }
         case EditType.removeFrame: {
+          profileStart('removeFrame');
           const siblingIndex = editReader.siblingIndex(edit);
           removeLogicalChild(parent, childIndexAtCurrentDepth + siblingIndex);
+          profileEnd('removeFrame');
           break;
         }
         case EditType.setAttribute: {
+          profileStart('setAttribute');
           const frameIndex = editReader.newTreeIndex(edit);
           const frame = batch.referenceFramesEntry(referenceFrames, frameIndex);
           const siblingIndex = editReader.siblingIndex(edit);
@@ -120,9 +130,11 @@ export class BrowserRenderer {
           } else {
             throw new Error('Cannot set attribute on non-element child');
           }
+          profileEnd('setAttribute');
           break;
         }
         case EditType.removeAttribute: {
+          profileStart('removeAttribute');
           // Note that we don't have to dispose the info we track about event handlers here, because the
           // disposed event handler IDs are delivered separately (in the 'disposedEventHandlerIds' array)
           const siblingIndex = editReader.siblingIndex(edit);
@@ -137,9 +149,11 @@ export class BrowserRenderer {
           } else {
             throw new Error('Cannot remove attribute from non-element child');
           }
+          profileEnd('removeAttribute');
           break;
         }
         case EditType.updateText: {
+          profileStart('updateText');
           const frameIndex = editReader.newTreeIndex(edit);
           const frame = batch.referenceFramesEntry(referenceFrames, frameIndex);
           const siblingIndex = editReader.siblingIndex(edit);
@@ -149,14 +163,17 @@ export class BrowserRenderer {
           } else {
             throw new Error('Cannot set text content on non-text child');
           }
+          profileEnd('updateText');
           break;
         }
         case EditType.updateMarkup: {
+          profileStart('updateMarkup');
           const frameIndex = editReader.newTreeIndex(edit);
           const frame = batch.referenceFramesEntry(referenceFrames, frameIndex);
           const siblingIndex = editReader.siblingIndex(edit);
           removeLogicalChild(parent, childIndexAtCurrentDepth + siblingIndex);
           this.insertMarkup(batch, parent, childIndexAtCurrentDepth + siblingIndex, frame);
+          profileEnd('updateMarkup');
           break;
         }
         case EditType.stepIn: {
@@ -181,8 +198,10 @@ export class BrowserRenderer {
           break;
         }
         case EditType.permutationListEnd: {
+          profileStart('permutationListEnd');
           permuteLogicalChildren(parent, permutationList!);
           permutationList = undefined;
+          profileEnd('permutationListEnd');
           break;
         }
         default: {
